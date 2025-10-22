@@ -9,16 +9,22 @@ USER root
 # Set working directory
 WORKDIR /app
 
-# Copy the DeepSeek-OCR vLLM implementation
-COPY DeepSeek-OCR/DeepSeek-OCR-master/DeepSeek-OCR-vllm/ ./DeepSeek-OCR-vllm/
+# Install git and huggingface-cli
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir huggingface-hub
+
+# Copy setup script
+COPY setup_deepseek.sh /app/setup_deepseek.sh
+RUN chmod +x /app/setup_deepseek.sh
+
+# Run setup to clone repo and download model
+# This will automatically clone DeepSeek-OCR if not found
+RUN /app/setup_deepseek.sh
 
 # Copy the startup script
 COPY start_server.py .
 
-# Copy requirements file and install additional dependencies
-COPY DeepSeek-OCR/requirements.txt .
-
-# Install Python dependencies excluding conflicting packages
+# Install Python dependencies
 RUN pip install --no-cache-dir \
     PyMuPDF \
     img2pdf \
@@ -26,18 +32,17 @@ RUN pip install --no-cache-dir \
     easydict \
     addict \
     Pillow \
-    numpy
-
-# Install additional dependencies for the API server
-RUN pip install --no-cache-dir \
+    numpy \
+    tqdm \
+    requests \
     fastapi==0.104.1 \
     uvicorn[standard]==0.24.0 \
     python-multipart==0.0.6
 
-# Install flash-attn for optimal performance (if not already included)
+# Install flash-attn for optimal performance
 RUN pip install --no-cache-dir flash-attn==2.7.3 --no-build-isolation || echo "flash-attn may already be installed"
 
-# Downgrade tokenizers to compatible version if needed
+# Install compatible tokenizers version
 RUN pip install --no-cache-dir tokenizers==0.13.3 || echo "Using existing tokenizers version"
 
 # Add the DeepSeek-OCR directory to PYTHONPATH
