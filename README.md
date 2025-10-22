@@ -66,23 +66,23 @@ REM Build the Docker image
 build.bat
 
 REM Start the service
-docker-compose up -d
+docker compose up -d
 
 REM Check logs
-docker-compose logs -f deepseek-ocr
+docker compose logs -f deepseek-ocr
 ```
 
 #### Linux/macOS Users
 
 ```bash
 # Build the Docker image
-docker-compose build
+docker compose build
 
 # Start the service
-docker-compose up -d
+docker compose up -d
 
 # Check logs
-docker-compose logs -f deepseek-ocr
+docker compose logs -f deepseek-ocr
 ```
 
 ### 3. Verify Installation
