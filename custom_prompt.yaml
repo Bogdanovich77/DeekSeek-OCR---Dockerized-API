@@ -1,0 +1,21 @@
+# Custom prompt for PDF processing
+# This file contains the prompt that will be used by pdf_to_custom_prompt.py
+#
+# Below are the default prompts in the config.py (for reference)
+#
+# PROMPT = '<image>\nFree OCR.'
+# TODO commonly used prompts
+# document: <image>\n<|grounding|>Convert the document to markdown.
+# other image: <image>\n<|grounding|>OCR this image.
+# without layouts: <image>\nFree OCR.
+# figures in document: <image>\nParse the figure.
+# general: <image>\nDescribe this image in detail.
+# rec: <image>\nLocate <|ref|>xxxx<|/ref|> in the image.
+# '先天下之忧而忧'
+# .......
+
+# prompt: '<image>\n<|grounding|>Convert the document to markdown.'
+
+prompt: |-
+  <image>
+  <|grounding|>Convert the document to markdown.

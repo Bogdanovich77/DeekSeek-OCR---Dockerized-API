@@ -21,6 +21,16 @@ RUN chmod +x /app/setup_deepseek.sh
 # This will automatically clone DeepSeek-OCR if not found
 RUN /app/setup_deepseek.sh
 
+# Copy custom files to replace the originals (transparent replacement approach)
+COPY custom_config.py ./DeepSeek-OCR-vllm/config.py
+COPY custom_image_process.py ./DeepSeek-OCR-vllm/process/image_process.py
+COPY custom_deepseek_ocr.py ./DeepSeek-OCR-vllm/deepseek_ocr.py
+
+# Copy custom run scripts to replace the originals
+COPY custom_run_dpsk_ocr_pdf.py ./DeepSeek-OCR-vllm/run_dpsk_ocr_pdf.py
+COPY custom_run_dpsk_ocr_image.py ./DeepSeek-OCR-vllm/run_dpsk_ocr_image.py
+COPY custom_run_dpsk_ocr_eval_batch.py ./DeepSeek-OCR-vllm/run_dpsk_ocr_eval_batch.py
+
 # Copy the startup script
 COPY start_server.py .
 
@@ -51,7 +61,7 @@ ENV PYTHONPATH="/app/DeepSeek-OCR-vllm:${PYTHONPATH}"
 # Create directories for outputs
 RUN mkdir -p /app/outputs
 
-# Make the startup script executable
+# Make the scripts executable
 RUN chmod +x /app/start_server.py
 
 # Expose the API port

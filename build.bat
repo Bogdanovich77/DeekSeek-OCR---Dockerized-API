@@ -101,6 +101,11 @@ echo =========================================
 echo ✓ Build complete!
 echo =========================================
 echo.
+echo 🔧 New OCR functionality available:
+echo    - Enhanced PDF to OCR processor (pdf_to_ocr_enhanced.py)
+echo    - OCR-specific prompt support: '<image>\nFree OCR.'
+echo    - Test scripts: test_ocr_prompt.py, quick_test_ocr.py
+echo.
 
 REM Step 4: Ask if user wants to start the service
 set /p START_SERVICE="Do you want to start the service now? (y/n): "
@@ -132,11 +137,17 @@ if /i "%START_SERVICE%"=="y" (
     echo   Stop service:   docker compose down
     echo   Restart:        docker compose restart
     echo.
+    echo 🧪 To test OCR functionality:
+    echo   docker compose exec deepseek-ocr python quick_test_ocr.py
+    echo.
 ) else (
     echo.
     echo Build complete!
     echo To start the service later, run:
     echo   docker compose up -d
+    echo.
+    echo 🧪 To test OCR functionality:
+    echo   docker compose exec deepseek-ocr python quick_test_ocr.py
     echo.
 )
 

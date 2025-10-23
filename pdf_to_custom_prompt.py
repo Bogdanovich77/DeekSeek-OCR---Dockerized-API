@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """
-PDF to Markdown Processor
+PDF to Custom Prompt Processor
 
 This application scans the /data folder for PDF files and converts them to Markdown format
-using the DeepSeek OCR API at localhost:8000. Each PDF file is converted to a Markdown 
-file with the same name in the same /data folder.
+using the DeepSeek OCR API at localhost:8000 with a custom prompt loaded from 
+custom_prompt.yaml in the project root.
+
+This version returns the raw model response without any post-processing.
 """
 
 import os
@@ -14,6 +16,7 @@ import logging
 import base64
 import json
 import requests
+import yaml
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
@@ -38,24 +41,63 @@ class Colors:
     RESET = '\033[0m'
 
 
-class PDFToMarkdownProcessor:
-    """Processor for converting PDF files to Markdown using DeepSeek OCR API"""
+class PDFToCustomPromptProcessor:
+    """Processor for converting PDF files to Markdown using DeepSeek OCR API with custom prompt"""
     
-    def __init__(self, data_folder: str = "data", api_base_url: str = "http://localhost:8000"):
+    def __init__(self, data_folder: str = "data", api_base_url: str = "http://localhost:8000", 
+                 custom_prompt_file: str = "custom_prompt.yaml"):
         """
         Initialize the PDF processor
         
         Args:
             data_folder: Path to the folder containing PDF files
             api_base_url: Base URL of the DeepSeek OCR API
+            custom_prompt_file: Path to the YAML file containing the custom prompt
         """
         self.data_folder = Path(data_folder)
         self.data_folder.mkdir(exist_ok=True)
         self.api_base_url = api_base_url
+        self.custom_prompt_file = custom_prompt_file
+        
+        # Load custom prompt from YAML file
+        self.custom_prompt = self._load_custom_prompt()
         
         # Test API connection
         if not self._test_api_connection():
             raise ConnectionError(f"Cannot connect to API at {api_base_url}")
+    
+    def _load_custom_prompt(self) -> str:
+        """
+        Load custom prompt from YAML file
+        
+        Returns:
+            The custom prompt string
+            
+        Raises:
+            FileNotFoundError: If the custom prompt file doesn't exist
+            yaml.YAMLError: If the YAML file is malformed
+            KeyError: If the prompt key is not found in the YAML file
+        """
+        try:
+            with open(self.custom_prompt_file, 'r', encoding='utf-8') as file:
+                config = yaml.safe_load(file)
+                
+            if 'prompt' not in config:
+                raise KeyError(f"'prompt' key not found in {self.custom_prompt_file}")
+                
+            prompt = config['prompt']
+            logger.info(f"Loaded custom prompt from {self.custom_prompt_file}: {prompt}")
+            return prompt
+            
+        except FileNotFoundError:
+            logger.error(f"Custom prompt file not found: {self.custom_prompt_file}")
+            raise
+        except yaml.YAMLError as e:
+            logger.error(f"Error parsing {self.custom_prompt_file}: {str(e)}")
+            raise
+        except KeyError as e:
+            logger.error(f"Missing required key in {self.custom_prompt_file}: {str(e)}")
+            raise
     
     def _test_api_connection(self) -> bool:
         """Test if the API is accessible"""
@@ -92,28 +134,15 @@ class PDFToMarkdownProcessor:
             logger.error(f"Error getting API spec: {str(e)}")
             return {}
     
-    def _encode_pdf_to_base64(self, pdf_path: str) -> str:
-        """
-        Encode a PDF file to base64
-        
-        Args:
-            pdf_path: Path to the PDF file
-            
-        Returns:
-            Base64 encoded string of the PDF
-        """
-        with open(pdf_path, "rb") as pdf_file:
-            return base64.b64encode(pdf_file.read()).decode('utf-8')
-    
     def _call_ocr_api(self, pdf_path: str) -> Optional[str]:
         """
-        Call the OCR API to process a PDF file
+        Call the OCR API to process a PDF file using the custom prompt
         
         Args:
             pdf_path: Path to the PDF file
             
         Returns:
-            Markdown content or None if processing failed
+            Raw markdown content or None if processing failed
         """
         try:
             # Use the correct endpoint based on the API documentation
@@ -126,9 +155,8 @@ class PDFToMarkdownProcessor:
             with open(pdf_path, 'rb') as pdf_file:
                 files = {'file': (os.path.basename(pdf_path), pdf_file, 'application/pdf')}
                 
-                # Use hardcoded markdown-specific prompt for this request
-                markdown_prompt = '<image>\n<|grounding|>Convert the document to markdown.'
-                data = {'prompt': markdown_prompt}
+                # Use custom prompt from YAML file
+                data = {'prompt': self.custom_prompt}
                 
                 response = requests.post(url, files=files, data=data, timeout=300)
                 
@@ -186,9 +214,9 @@ class PDFToMarkdownProcessor:
                 logger.error(f"Failed to get markdown content for {pdf_path}")
                 return None
             
-            # Save markdown file with -MD suffix
+            # Save markdown file with -CUSTOM suffix
             pdf_path_obj = Path(pdf_path)
-            markdown_path = pdf_path_obj.with_name(f"{pdf_path_obj.stem}-MD.md")
+            markdown_path = pdf_path_obj.with_name(f"{pdf_path_obj.stem}-CUSTOM.md")
             
             with open(markdown_path, 'w', encoding='utf-8') as f:
                 f.write(markdown_content)
@@ -227,17 +255,19 @@ class PDFToMarkdownProcessor:
 
 def main():
     """Main function to run the PDF processor"""
-    print(f"{Colors.BLUE}PDF to Markdown Processor{Colors.RESET}")
+    print(f"{Colors.BLUE}PDF to Custom Prompt Processor{Colors.RESET}")
     print(f"{Colors.YELLOW}Scanning /data folder for PDF files...{Colors.RESET}")
     
     try:
-        processor = PDFToMarkdownProcessor()
+        processor = PDFToCustomPromptProcessor()
         markdown_files = processor.scan_and_process_all_pdfs()
         
         if markdown_files:
             print(f"\n{Colors.GREEN}Successfully converted {len(markdown_files)} PDF files to Markdown:{Colors.RESET}")
             for md_file in markdown_files:
                 print(f"  - {md_file}")
+            print(f"\n{Colors.BLUE}Used custom prompt: {processor.custom_prompt}{Colors.RESET}")
+            print(f"{Colors.YELLOW}Note: This is the raw model response without post-processing.{Colors.RESET}")
         else:
             print(f"{Colors.YELLOW}No PDF files were processed.{Colors.RESET}")
             
