@@ -2,6 +2,8 @@
 # This file replaces the original config.py during Docker build
 # Modify the PROMPT value below to change the default prompt used by the OCR service
 
+import os
+
 # TODO: change modes
 # Tiny: base_size = 512, image_size = 512, crop_mode = False
 # Small: base_size = 640, image_size = 640, crop_mode = False
@@ -14,11 +16,11 @@ IMAGE_SIZE = 640
 CROP_MODE = True
 MIN_CROPS= 2
 MAX_CROPS= 6 # max:9; If your GPU memory is small, it is recommended to set it to 6.
-MAX_CONCURRENCY = 100 # If you have limited GPU memory, lower the concurrency count.
-NUM_WORKERS = 64 # image pre-process (resize/padding) workers 
+MAX_CONCURRENCY = int(os.getenv('MAX_CONCURRENCY', '100')) # If you have limited GPU memory, lower the concurrency count.
+NUM_WORKERS = int(os.getenv('MAX_WORKERS', '64')) # image pre-process (resize/padding) workers 
 PRINT_NUM_VIS_TOKENS = False
 SKIP_REPEAT = True
-MODEL_PATH = 'deepseek-ai/DeepSeek-OCR' # change to your model path
+MODEL_PATH = os.getenv('MODEL_PATH', 'deepseek-ai/DeepSeek-OCR') # change to your model path
 
 # TODO: change INPUT_PATH
 # .pdf: run_dpsk_ocr_pdf.py; 

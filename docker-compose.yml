@@ -8,10 +8,10 @@ services:
       - ./models:/app/models  # Mount directory for model weights
       - ./outputs:/app/outputs  # Mount directory for output files
     environment:
-      - CUDA_VISIBLE_DEVICES=0
-      - MODEL_PATH=/app/models/deepseek-ai/DeepSeek-OCR  # Update with your model path
-      - MAX_CONCURRENCY=5  # Adjust based on your GPU memory
-      - GPU_MEMORY_UTILIZATION=0.85  # Adjust based on your GPU memory
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - MODEL_PATH=${MODEL_PATH:-/app/models/deepseek-ai/DeepSeek-OCR}
+      - MAX_CONCURRENCY=${MAX_CONCURRENCY:-5}
+      - GPU_MEMORY_UTILIZATION=${GPU_MEMORY_UTILIZATION:-0.85}
     deploy:
       resources:
         reservations:
