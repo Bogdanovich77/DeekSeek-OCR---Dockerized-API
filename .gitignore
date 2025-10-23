@@ -14,8 +14,6 @@ build/
 # Logs
 *.log
 
-# Data and outputs
-data/
 outputs/
 models/
 
