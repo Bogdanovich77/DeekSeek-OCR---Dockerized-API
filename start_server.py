@@ -83,6 +83,7 @@ def initialize_model():
         print("Initializing DeepSeek-OCR model...")
         
         # Initialize vLLM engine
+        gpu_memory_util = float(os.environ.get('GPU_MEMORY_UTILIZATION', '0.9'))
         llm = LLM(
             model=MODEL_PATH,
             hf_overrides={"architectures": ["DeepseekOCRForCausalLM"]},
@@ -93,7 +94,7 @@ def initialize_model():
             swap_space=0,
             max_num_seqs=MAX_CONCURRENCY,
             tensor_parallel_size=1,
-            gpu_memory_utilization=0.9,
+            gpu_memory_utilization=gpu_memory_util,
             disable_mm_preprocessor_cache=True
         )
         

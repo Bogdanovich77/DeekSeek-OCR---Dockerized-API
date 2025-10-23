@@ -557,30 +557,71 @@ For detailed documentation, see **`CUSTOM_CONFIG_README.md`**.
 
 ### Environment Variables
 
-Edit `docker-compose.yml` to adjust these settings:
+Configuration is now centralized in a `.env` file for easier management. This ensures consistency across Docker containers and Python scripts.
 
-```yaml
-environment:
-  - CUDA_VISIBLE_DEVICES=0                    # GPU device to use
-  - MODEL_PATH=/app/models/deepseek-ai/DeepSeek-OCR  # Model path
-  - MAX_CONCURRENCY=50                         # Max concurrent requests
-  - GPU_MEMORY_UTILIZATION=0.85                # GPU memory usage (0.1-1.0)
-```
+#### Setup
+
+1. **Create your `.env` file** (a `.env.example` template is provided):
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Edit `.env` to customize settings**:
+   ```bash
+   # GPU and Processing Configuration
+   CUDA_VISIBLE_DEVICES=0
+   GPU_MEMORY_UTILIZATION=0.85
+
+   # Concurrency Settings
+   # MAX_CONCURRENCY: API concurrent requests
+   # MAX_WORKERS: PDF processor workers (should match MAX_CONCURRENCY)
+   MAX_CONCURRENCY=5
+   MAX_WORKERS=5
+
+   # Model Configuration
+   MODEL_PATH=/app/models/deepseek-ai/DeepSeek-OCR
+   ```
+
+#### Configuration Variables
+
+- **`CUDA_VISIBLE_DEVICES`**: GPU device ID to use (default: `0`)
+- **`GPU_MEMORY_UTILIZATION`**: GPU memory usage fraction, 0.1-1.0 (default: `0.85`)
+- **`MAX_CONCURRENCY`**: Maximum concurrent API requests (default: `5`)
+- **`MAX_WORKERS`**: Maximum concurrent workers for PDF processing scripts (default: `5`)
+  - **Important**: `MAX_WORKERS` should match `MAX_CONCURRENCY` to prevent overwhelming the API
+- **`MODEL_PATH`**: Path to the DeepSeek-OCR model (default: `/app/models/deepseek-ai/DeepSeek-OCR`)
+
+#### How It Works
+
+The `.env` file is automatically loaded by:
+- **Docker Compose**: Variables are passed to the container
+- **Python Scripts**: Scripts read environment variables using `os.getenv()`
+- **Custom Config**: `custom_config.py` reads from environment variables with sensible defaults
+
+This centralized approach ensures that changing concurrency settings in one place updates both the API and processing scripts.
 
 ### Performance Tuning
 
 #### For High-Throughput Processing
-```yaml
-environment:
-  - MAX_CONCURRENCY=100
-  - GPU_MEMORY_UTILIZATION=0.95
+Edit your `.env` file:
+```bash
+MAX_CONCURRENCY=100
+MAX_WORKERS=100
+GPU_MEMORY_UTILIZATION=0.95
 ```
 
 #### For Memory-Constrained Systems
-```yaml
-environment:
-  - MAX_CONCURRENCY=10
-  - GPU_MEMORY_UTILIZATION=0.7
+Edit your `.env` file:
+```bash
+MAX_CONCURRENCY=10
+MAX_WORKERS=10
+GPU_MEMORY_UTILIZATION=0.7
+```
+
+After editing `.env`, restart the Docker container:
+```bash
+docker-compose down
+docker-compose up -d
 ```
 
 ---
@@ -592,10 +633,14 @@ environment:
 #### 1. Out of Memory Errors
 ```bash
 # Reduce concurrency and GPU memory usage
-# Edit docker-compose.yml:
-environment:
-  - MAX_CONCURRENCY=10
-  - GPU_MEMORY_UTILIZATION=0.7
+# Edit .env file:
+MAX_CONCURRENCY=10
+MAX_WORKERS=10
+GPU_MEMORY_UTILIZATION=0.7
+
+# Restart container
+docker-compose down
+docker-compose up -d
 ```
 
 #### 2. Model Loading Issues

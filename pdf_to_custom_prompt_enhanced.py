@@ -27,6 +27,7 @@ import tempfile
 import urllib.parse
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from PIL import Image, ImageDraw
 import numpy as np
 import fitz  # PyMuPDF
@@ -57,7 +58,7 @@ class PDFToCustomPromptProcessor:
     
     def __init__(self, data_folder: str = "data", api_base_url: str = "http://localhost:8000",
                  custom_prompt_file: str = "custom_prompt.yaml", extract_images: bool = True,
-                 create_images_folder: bool = True):
+                 create_images_folder: bool = True, max_workers: Optional[int] = None):
         """
         Initialize the PDF processor
         
@@ -67,6 +68,7 @@ class PDFToCustomPromptProcessor:
             custom_prompt_file: Path to the YAML file containing the custom prompt
             extract_images: Whether to extract images from the PDF
             create_images_folder: Whether to create an images subfolder for extracted images
+            max_workers: Maximum number of concurrent requests (default: from MAX_WORKERS env or 5)
         """
         self.data_folder = Path(data_folder)
         self.data_folder.mkdir(exist_ok=True)
@@ -74,6 +76,10 @@ class PDFToCustomPromptProcessor:
         self.custom_prompt_file = custom_prompt_file
         self.extract_images = extract_images
         self.create_images_folder = create_images_folder
+        # Get max_workers from environment variable if not provided
+        if max_workers is None:
+            max_workers = int(os.getenv('MAX_WORKERS', '5'))
+        self.max_workers = max_workers
         
         # Create images subfolder if needed
         if self.extract_images and self.create_images_folder:
@@ -464,24 +470,40 @@ class PDFToCustomPromptProcessor:
     def scan_and_process_all_pdfs(self) -> List[str]:
         """
         Scan the data folder for PDF files and convert all of them to Markdown
+        Recursively searches all subdirectories within the data folder.
+        Processes PDFs in parallel batches using ThreadPoolExecutor.
         
         Returns:
             List of paths to generated Markdown files
         """
-        # Find all PDF files in the data folder
-        pdf_files = list(self.data_folder.glob("*.pdf"))
+        # Find all PDF files in the data folder and subdirectories (recursive)
+        pdf_files = list(self.data_folder.glob("**/*.pdf"))
         
         if not pdf_files:
             logger.info(f"No PDF files found in {self.data_folder}")
             return []
         
-        logger.info(f"Found {len(pdf_files)} PDF files to process")
+        logger.info(f"Found {len(pdf_files)} PDF files to process with {self.max_workers} concurrent workers")
         
         markdown_files = []
-        for pdf_file in pdf_files:
-            markdown_file = self.convert_pdf_to_markdown(str(pdf_file))
-            if markdown_file:
-                markdown_files.append(markdown_file)
+        
+        # Process PDFs in parallel using ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
+            # Submit all tasks
+            future_to_pdf = {
+                executor.submit(self.convert_pdf_to_markdown, str(pdf_file)): pdf_file 
+                for pdf_file in pdf_files
+            }
+            
+            # Collect results as they complete
+            for future in as_completed(future_to_pdf):
+                pdf_file = future_to_pdf[future]
+                try:
+                    markdown_file = future.result()
+                    if markdown_file:
+                        markdown_files.append(markdown_file)
+                except Exception as e:
+                    logger.error(f"Exception processing {pdf_file}: {str(e)}")
         
         return markdown_files
 
