@@ -4,19 +4,54 @@ A powerful OCR solution that converts PDF documents to Markdown format using Dee
 
 ## 🚀 Quick Start
 
-### Option 1: Batch Processing with pdf_to_markdown_processor.py
+> **💡 TIP**: Use the automated setup scripts for the easiest experience!
 
-1. Place your PDF files in the `data/` directory
-2. Ensure the DeepSeek-OCR API is running (see Docker setup below)
+### Recommended: Automated Setup
+
+**Linux/macOS:**
+```bash
+./build_and_run.sh
+```
+
+**Windows:**
+```cmd
+build.bat
+```
+
+These scripts will automatically:
+- Check prerequisites (Docker, GPU, drivers)
+- Download the DeepSeek-OCR model (~15GB)
+- Clone source code
+- Build Docker container
+- Start the service
+
+Then process your PDFs:
+```bash
+# Place PDFs in data/ directory
+cp your_document.pdf data/
+
+# Run batch processor
+python pdf_to_markdown_processor.py
+
+# Check results
+ls data/*-MD.md
+```
+
+### Manual Setup Options
+
+#### Option 1: Batch Processing with pdf_to_markdown_processor.py
+
+1. Run setup and build (see Docker Backend Setup below)
+2. Place your PDF files in the `data/` directory
 3. Run the processor:
 
 ```bash
 python pdf_to_markdown_processor.py
 ```
 
-### Option 2: REST API with Docker Backend
+#### Option 2: REST API with Docker Backend
 
-1. Build and start the Docker container
+1. Run setup and build the Docker container (see Docker Backend Setup below)
 2. Use the API endpoints to process documents
 3. Integrate with your applications
 
@@ -41,51 +76,93 @@ python pdf_to_markdown_processor.py
 
 ## 🐳 Docker Backend Setup
 
-### 1. Download Model Weights
+> **⚠️ IMPORTANT**: You MUST download the model and source code to your local machine BEFORE building the Docker container. The model files are mounted as a volume into the container, so they must exist locally first.
 
-Create a directory for model weights and download the DeepSeek-OCR model:
+### Quick Setup (Recommended)
 
-```bash
-# Create models directory
-mkdir -p models
-
-# Download using Hugging Face CLI
-pip install huggingface_hub
-huggingface-cli download deepseek-ai/DeepSeek-OCR --local-dir models/deepseek-ai/DeepSeek-OCR
-
-# Or using git
-git clone https://huggingface.co/deepseek-ai/DeepSeek-OCR models/deepseek-ai/DeepSeek-OCR
-```
-
-### 2. Build and Run the Docker Container
-
-#### Windows Users
-
-```cmd
-REM Build the Docker image
-build.bat
-
-REM Start the service
-docker-compose up -d
-
-REM Check logs
-docker-compose logs -f deepseek-ocr
-```
+Use the automated setup scripts that handle everything for you:
 
 #### Linux/macOS Users
 
 ```bash
-# Build the Docker image
-docker-compose build
-
-# Start the service
-docker-compose up -d
-
-# Check logs
-docker-compose logs -f deepseek-ocr
+# One command to set up, build, and optionally start the service
+./build_and_run.sh
 ```
 
-### 3. Verify Installation
+This script will:
+1. Check prerequisites (Docker, GPU, NVIDIA drivers)
+2. Download the DeepSeek-OCR model (~15GB) if not present
+3. Clone the DeepSeek-OCR source code if not present
+4. Build the Docker image
+5. Optionally start the service
+
+#### Windows Users
+
+```cmd
+REM One command to set up, build, and optionally start the service
+build.bat
+```
+
+This script performs the same checks and setup as the Linux/macOS version.
+
+---
+
+### Manual Setup (If Automated Scripts Don't Work)
+
+If you prefer manual setup or the automated scripts fail, follow these steps:
+
+#### Step 1: Download Model and Source Code
+
+**CRITICAL**: This step must be completed BEFORE building Docker!
+
+```bash
+# Run the setup script
+./setup_local.sh
+
+# This will:
+# - Install huggingface-cli if needed
+# - Download the DeepSeek-OCR model (~15GB) to ./models/
+# - Clone DeepSeek-OCR source code to ./DeepSeek-OCR/
+# - Verify all required files are present
+```
+
+Or manually:
+
+```bash
+# Install Hugging Face CLI
+pip install huggingface_hub
+
+# Download model to local directory
+huggingface-cli download deepseek-ai/DeepSeek-OCR \
+  --local-dir ./models/deepseek-ai/DeepSeek-OCR \
+  --local-dir-use-symlinks False
+
+# Clone DeepSeek-OCR source
+git clone https://github.com/deepseek-ai/DeepSeek-OCR.git
+```
+
+#### Step 2: Build the Docker Container
+
+```bash
+# Build the Docker image
+docker compose build
+```
+
+**Note**: Use `docker compose` (Docker CLI plugin v2), NOT the deprecated `docker-compose` standalone tool.
+
+#### Step 3: Start the Service
+
+```bash
+# Start the service in detached mode
+docker compose up -d
+
+# Check logs to ensure model loads successfully
+docker compose logs -f deepseek-ocr
+```
+
+The model will take 1-2 minutes to load on first startup.
+
+#### Step 4: Verify Installation
 
 ```bash
 # Health check
@@ -526,10 +603,10 @@ These custom files are automatically copied over the original library files duri
 4. **Build and Run**:
    ```bash
    # Rebuild with custom configuration and fixes
-   docker-compose build
+   docker compose build
    
    # Start the container
-   docker-compose up -d
+   docker compose up -d
    ```
 
 #### Docker Build Process
@@ -589,7 +666,46 @@ environment:
 
 ### Common Issues
 
-#### 1. Out of Memory Errors
+#### 1. HFValidationError: Container Crashes on Startup
+
+**Symptom**: Container immediately exits with error:
+```
+HFValidationError: Repo id must be in the form 'repo_name' or 'namespace/repo_name':
+'/app/models/deepseek-ai/DeepSeek-OCR'
+```
+
+**Root Cause**: The model files don't exist in your local `./models/` directory. The container expects the model to be mounted as a volume from your host machine.
+
+**Solution**:
+```bash
+# STOP the container first
+docker compose down
+
+# Run setup to download model and source code
+./setup_local.sh
+
+# OR use the automated build script
+./build_and_run.sh  # Linux/macOS
+build.bat            # Windows
+
+# OR manually download the model
+pip install huggingface_hub
+huggingface-cli download deepseek-ai/DeepSeek-OCR \
+  --local-dir ./models/deepseek-ai/DeepSeek-OCR \
+  --local-dir-use-symlinks False
+
+# Verify files exist locally
+ls -la ./models/deepseek-ai/DeepSeek-OCR/
+# Should show: config.json, tokenizer_config.json, and model weights
+
+# NOW rebuild and start
+docker compose build
+docker compose up -d
+```
+
+**Why this happens**: The `docker-compose.yml` has `./models:/app/models` volume mount. If `./models/` is empty on your host, it overrides the container's directory, making it empty too.
+
+#### 2. Out of Memory Errors
 ```bash
 # Reduce concurrency and GPU memory usage
 # Edit docker-compose.yml:
@@ -604,7 +720,7 @@ environment:
 ls -la models/deepseek-ai/DeepSeek-OCR/
 
 # Verify model files are present
-docker-compose exec deepseek-ocr ls -la /app/models/deepseek-ai/DeepSeek-OCR/
+docker compose exec deepseek-ocr ls -la /app/models/deepseek-ai/DeepSeek-OCR/
 ```
 
 #### 3. CUDA Errors
@@ -622,10 +738,10 @@ docker run --rm --gpus all nvidia/cuda:11.8-base-ubuntu20.04 nvidia-smi
 curl http://localhost:8000/health
 
 # Check container logs
-docker-compose logs -f deepseek-ocr
+docker compose logs -f deepseek-ocr
 
 # Restart the service
-docker-compose restart deepseek-ocr
+docker compose restart deepseek-ocr
 ```
 
 #### 5. PDF Processing Errors
@@ -651,13 +767,13 @@ This error has been fixed with the custom files included in the Docker build. If
 1. **Ensure you're using the updated Dockerfile** (includes custom run scripts)
 2. **Rebuild the container completely**:
    ```bash
-   docker-compose down
-   docker-compose build --no-cache
-   docker-compose up -d
+   docker compose down
+   docker compose build --no-cache
+   docker compose up -d
    ```
 3. **Verify the fix is applied**:
    ```bash
-   docker-compose exec deepseek-ocr ls -la /app/DeepSeek-OCR-vllm/run_dpsk_ocr_*.py
+   docker compose exec deepseek-ocr ls -la /app/DeepSeek-OCR-vllm/run_dpsk_ocr_*.py
    # These should show recent timestamps from the build
    ```
 
@@ -669,7 +785,7 @@ For debugging, you can run the container with additional tools:
 
 ```bash
 # Run with shell access
-docker-compose run --rm deepseek-ocr bash
+docker compose run --rm deepseek-ocr bash
 
 # Check model loading
 python -c "
