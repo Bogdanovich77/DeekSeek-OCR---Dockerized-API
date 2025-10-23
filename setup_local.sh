@@ -125,9 +125,9 @@ if [ $ISSUES -eq 0 ]; then
     echo ""
     echo -e "${BLUE}Next steps:${NC}"
     echo -e "  1. Build the Docker image:"
-    echo -e "     ${YELLOW}docker-compose build${NC}"
+    echo -e "     ${YELLOW}docker compose build${NC}"
     echo -e "  2. Start the service:"
-    echo -e "     ${YELLOW}docker-compose up${NC}"
+    echo -e "     ${YELLOW}docker compose up${NC}"
     echo ""
 else
     echo -e "${RED}=========================================${NC}"
