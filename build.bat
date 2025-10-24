@@ -1,75 +1,154 @@
 @echo off
-REM DeepSeek-OCR Docker Build Script for Windows
-REM This script builds the Docker container with the new folder structure
+REM DeepSeek-OCR Build and Run Script for Windows
+REM This script enforces proper setup order before building
 
-echo 🔧 Building DeepSeek-OCR Docker container...
+echo =========================================
+echo DeepSeek-OCR Build and Run Script
+echo =========================================
+echo.
 
-REM Check if models directory exists
-if not exist "models" (
-    echo ⚠️  Models directory not found. Creating it...
-    mkdir models
-    echo 💡 Please download the DeepSeek-OCR model to models\deepseek-ai\DeepSeek-OCR\
-    echo    Run: huggingface-cli download deepseek-ai/DeepSeek-OCR --local-dir models\deepseek-ai/DeepSeek-OCR
-    echo.
+REM Step 1: Check prerequisites
+echo Checking prerequisites...
+
+REM Check Docker
+docker --version >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo ❌ Docker is not installed
+    pause
+    exit /b 1
+)
+echo ✓ Docker found
+
+REM Check Docker Compose
+docker compose version >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo ❌ Docker Compose plugin not found
+    echo Please install Docker Compose v2
+    pause
+    exit /b 1
+)
+echo ✓ Docker Compose found
+
+REM Check NVIDIA GPU
+nvidia-smi >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo ❌ nvidia-smi not found - NVIDIA GPU required
+    pause
+    exit /b 1
+)
+echo ✓ NVIDIA GPU found
+echo.
+
+REM Step 2: Check if setup has been run
+echo Checking setup status...
+set SETUP_NEEDED=0
+
+REM Check for DeepSeek-OCR source
+if not exist "DeepSeek-OCR\DeepSeek-OCR-master\DeepSeek-OCR-vllm" (
+    echo ❌ DeepSeek-OCR source code not found
+    set SETUP_NEEDED=1
+) else (
+    echo ✓ DeepSeek-OCR source code found
 )
 
-REM Check if model files exist
+REM Check for model files
 if not exist "models\deepseek-ai\DeepSeek-OCR\config.json" (
-    echo ❌ Model files not found in models\deepseek-ai\DeepSeek-OCR\
-    echo 💡 Please download the model first:
-    echo    huggingface-cli download deepseek-ai/DeepSeek-OCR --local-dir models\deepseek-ai\DeepSeek-OCR
+    echo ❌ Model files not found
+    set SETUP_NEEDED=1
+) else (
+    echo ✓ Model files found
+)
+
+if %SETUP_NEEDED% EQU 1 (
+    echo.
+    echo =========================================
+    echo Setup required before building
+    echo =========================================
+    echo.
+    echo Please run setup_local.sh first or manually:
+    echo   1. Install huggingface-cli: pip install huggingface-hub
+    echo   2. Clone DeepSeek-OCR: git clone https://github.com/deepseek-ai/DeepSeek-OCR.git
+    echo   3. Download model: huggingface-cli download deepseek-ai/DeepSeek-OCR --local-dir models\deepseek-ai\DeepSeek-OCR
     echo.
     pause
     exit /b 1
 )
 
-REM Check if DeepSeek-OCR source exists
-if not exist "DeepSeek-OCR\DeepSeek-OCR-master" (
-    echo ❌ DeepSeek-OCR source not found in DeepSeek-OCR\DeepSeek-OCR-master\
-    pause
-    exit /b 1
-)
-
-REM Build the Docker image
-echo 🏗️  Building Docker image with CUDA 12.1...
-echo ⏳ This may take 10-20 minutes on first build...
+REM Step 3: Build Docker image
 echo.
-echo 🧹 Clearing Docker build cache to ensure latest changes...
-
-docker builder prune -f
+echo =========================================
+echo Building Docker image...
+echo =========================================
 echo.
-docker-compose build
+
+docker compose build
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo ❌ Build failed!
-    echo 💡 Possible solutions:
-    echo    1. Ensure Docker Desktop is running with GPU support
-    echo    2. Check that NVIDIA Container Toolkit is installed
-    echo    3. Verify you have sufficient disk space (10GB+)
-    echo    4. Try running: docker system prune -f
+    echo ❌ Docker build failed
+    echo.
+    echo Troubleshooting:
+    echo   1. Ensure Docker Desktop is running
+    echo   2. Check NVIDIA Container Toolkit: docker run --rm --gpus all nvidia/cuda:11.8-base-ubuntu20.04 nvidia-smi
+    echo   3. Free up disk space if needed: docker system prune
     echo.
     pause
     exit /b 1
 )
 
-echo ✅ Build complete!
 echo.
-echo 🚀 To start the service, run:
-echo    docker-compose up -d
+echo =========================================
+echo ✓ Build complete!
+echo =========================================
 echo.
-echo 🔍 To check the service, run:
-echo    curl http://localhost:8000/health
-echo.
-echo 📋 To view logs, run:
-echo    docker-compose logs -f deepseek-ocr
-echo.
-echo 🔧 New OCR functionality added:
+echo 🔧 New OCR functionality available:
 echo    - Enhanced PDF to OCR processor (pdf_to_ocr_enhanced.py)
 echo    - OCR-specific prompt support: '<image>\nFree OCR.'
 echo    - Test scripts: test_ocr_prompt.py, quick_test_ocr.py
 echo.
-echo 🧪 To test OCR functionality:
-echo    docker-compose exec deepseek-ocr python quick_test_ocr.py
-echo.
+
+REM Step 4: Ask if user wants to start the service
+set /p START_SERVICE="Do you want to start the service now? (y/n): "
+
+if /i "%START_SERVICE%"=="y" (
+    echo.
+    echo Starting DeepSeek-OCR service...
+    docker compose up -d
+
+    echo.
+    echo ✓ Service started!
+    echo.
+    echo Checking service health...
+    echo ^(This may take 1-2 minutes for model to load^)
+    timeout /t 10 >nul
+
+    echo.
+    echo Testing health endpoint...
+    curl -s http://localhost:8000/health
+
+    echo.
+    echo =========================================
+    echo Service is running!
+    echo =========================================
+    echo.
+    echo Useful commands:
+    echo   View logs:      docker compose logs -f deepseek-ocr
+    echo   Health check:   curl http://localhost:8000/health
+    echo   Stop service:   docker compose down
+    echo   Restart:        docker compose restart
+    echo.
+    echo 🧪 To test OCR functionality:
+    echo   docker compose exec deepseek-ocr python quick_test_ocr.py
+    echo.
+) else (
+    echo.
+    echo Build complete!
+    echo To start the service later, run:
+    echo   docker compose up -d
+    echo.
+    echo 🧪 To test OCR functionality:
+    echo   docker compose exec deepseek-ocr python quick_test_ocr.py
+    echo.
+)
+
 pause
