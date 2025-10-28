@@ -28,6 +28,25 @@ try:
 except Exception as e:
     print(f"Warning during version check: {e}")
 
+# Fix tokenizers version compatibility with DeepSeek-OCR tokenizer.json format
+print("Checking tokenizers version compatibility...")
+try:
+    import tokenizers
+    version = tokenizers.__version__
+    print(f"Current tokenizers version: {version}")
+
+    # If version is < 0.15.0, upgrade for DeepSeek-OCR tokenizer.json compatibility
+    major, minor = map(int, version.split('.')[:2])
+    if major == 0 and minor < 15:
+        print(f"Incompatible tokenizers version {version} detected. Upgrading to 0.15.2...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--no-cache-dir", "tokenizers==0.15.2"])
+        print("Tokenizers upgraded successfully. Reloading...")
+        # Force reload of tokenizers module
+        import importlib
+        importlib.reload(tokenizers)
+except Exception as e:
+    print(f"Warning during tokenizers version check: {e}")
+
 # Add DeepSeek-OCR to path
 sys.path.insert(0, '/app/DeepSeek-OCR')
 
