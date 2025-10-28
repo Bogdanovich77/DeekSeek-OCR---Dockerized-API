@@ -1,4 +1,4 @@
-FROM runpod/pytorch:2.1.0-py3.10-cuda12.1.1-devel-ubuntu22.04
+FROM runpod/pytorch:2.1.1-py3.10-cuda12.1.1-devel-ubuntu22.04
 
 WORKDIR /app
 
@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y \
 # Install Python packages
 RUN pip install --no-cache-dir \
     runpod \
-    torch==2.1.0 \
+    torch==2.1.1 \
     transformers \
     accelerate \
     sentencepiece \
